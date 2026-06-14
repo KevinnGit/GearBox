@@ -1,10 +1,13 @@
-import { Text, View, StyleSheet, Image, TouchableOpacity, ScrollView } from "react-native"
-const evo5 = require("../assets/images/evo5.png")
-const fireblade = require("../assets/images/fireblade.png")
+import { ScrollView, Text, TouchableOpacity, View, StyleSheet, Image } from "react-native"
 
+//images
+const evo5 = require("../assets/images/evo5.png")
+const firebalde = require("../assets/images/fireblade.png")
+
+//function for select a category either car or motor
 const app = () => {
   const handleCategoryPress = (category: string) => {
-    console.log(`${category} selected`);
+    console.log('${category} selected');
   };
 
   return(
@@ -12,23 +15,19 @@ const app = () => {
       <View style={styles.headerContainer}>
         <Text style={styles.title}>GearBox</Text>
       </View>
-
+      
       <View style={styles.categoriesContainer}>
-        {/* Car Category */}
-        <TouchableOpacity 
-          style={styles.categoryCard}
-          onPress={() => handleCategoryPress('Car')}
+        <TouchableOpacity style={styles.categoryCard}
+          onPress={() => handleCategoryPress('Car')} //press car will select
         >
-          <Image source={evo5} style={styles.categoryImage} />
+          <Image source={evo5} style={styles.categoryImage}/>
           <Text style={styles.categoryLabel}>Car</Text>
         </TouchableOpacity>
 
-        {/* Motorcycle Category */}
-        <TouchableOpacity 
-          style={styles.categoryCard}
-          onPress={() => handleCategoryPress('Motorcycle')}
+         <TouchableOpacity style={styles.categoryCard}
+          onPress={() => handleCategoryPress('Motorcycle')}//press motor will select
         >
-          <Image source={fireblade} style={styles.categoryImage} />
+          <Image source={firebalde} style={styles.categoryImage}/>
           <Text style={styles.categoryLabel}>Motorcycle</Text>
         </TouchableOpacity>
       </View>
@@ -77,7 +76,7 @@ const styles = StyleSheet.create({
     color: '#b8b8b8',
     letterSpacing: 0.5,
     padding: 10,
-  },
+  }
 });
 
 export default app
