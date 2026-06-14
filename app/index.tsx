@@ -12,7 +12,7 @@ const app = () => {
   const handleCategoryPress = (category: string) => {
     console.log(`${category} selected`);
     router.push({
-      pathname: "/details",
+      pathname: "/selectVehicle",
       params: { category }
     })
   };

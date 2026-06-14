@@ -1,92 +1,133 @@
-import { ScrollView, Text, View, StyleSheet, Image, TouchableOpacity } from "react-native"
+import { ScrollView, Text, View, StyleSheet, Image, TouchableOpacity, FlatList } from "react-native"
 import { useRoute, useNavigation } from "@react-navigation/native"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
+import { MaterialIcons } from "@expo/vector-icons"
 
-// Sample data for cars and motorcycles
-const vehicleData = {
-  car: [
-    {
-      id: 1,
-      name: "Mitsubishi Evo 5",
-      image: require("../assets/images/evo5.png"),
-    },
-    {
-      id: 2,
-      name: "Toyota Supra",
-      image: require("../assets/images/evo5.png"),
-    },
-    {
-      id: 3,
-      name: "Nissan Skyline",
-      image: require("../assets/images/evo5.png"),
-    },
-  ],
-  motorcycle: [
-    {
-      id: 1,
-      name: "Honda Fireblade",
-      image: require("../assets/images/fireblade.png"),
-    },
-    {
-      id: 2,
-      name: "Yamaha YZF-R1",
-      image: require("../assets/images/fireblade.png"),
-    },
-    {
-      id: 3,
-      name: "Kawasaki Ninja",
-      image: require("../assets/images/fireblade.png"),
-    },
-  ],
-}
+// Sample maintenance data
+const maintenanceData = [
+  {
+    id: 1,
+    serviceType: "Oil Change",
+    mileage: 12500,
+    cost: 45.99,
+    date: "2024-06-10",
+  },
+  {
+    id: 2,
+    serviceType: "Tire Rotation",
+    mileage: 15200,
+    cost: 60.00,
+    date: "2024-05-15",
+  },
+  {
+    id: 3,
+    serviceType: "Brake Pads Replacement",
+    mileage: 18700,
+    cost: 150.50,
+    date: "2024-04-20",
+  },
+]
 
 const DetailsScreen = () => {
   const route = useRoute()
   const navigation = useNavigation()
-  const category = (route.params as any)?.category || "car"
-
-  const vehicles =
-    category.toLowerCase() === "car"
-      ? vehicleData.car
-      : vehicleData.motorcycle
+  const vehicle = (route.params as any)?.vehicle
+  const category = (route.params as any)?.category || "Car"
+  const [maintenance, setMaintenance] = useState(maintenanceData)
 
   useEffect(() => {
     navigation.setOptions({
-      title: category,
+      title: "My Ride",
     })
-  }, [category, navigation])
+  }, [navigation])
 
-  const handleAddVehicle = (vehicleId: number) => {
-    console.log(`Added vehicle ${vehicleId} from ${category}`)
+  const handleLogService = () => {
+ navigation.navigate("addService", { 
+      vehicle,
+      category,
+    })
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
   }
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.headerContainer}>
-        <Text style={styles.title}>{category}</Text>
-        <Text style={styles.subtitle}>
-          {vehicles.length} {category.toLowerCase()}(s) available
-        </Text>
+      {/* My Ride Header */}
+      <View style={styles.rideHeader}>
+        <View style={styles.vehicleImageContainer}>
+          <MaterialIcons
+            name={category === "Motorcycle" ? "two-wheeler" : "directions-car"}
+            size={80}
+            color="#e8e8e8"
+          />
+        </View>
+        
+        <View style={styles.vehicleDetails}>
+          <Text style={styles.year}>{vehicle.year}</Text>
+          <Text style={styles.make}>{vehicle.make}</Text>
+          <Text style={styles.model}>{vehicle.model}</Text>
+        </View>
       </View>
 
-      <View style={styles.vehiclesContainer}>
-        {vehicles.map((vehicle) => (
-          <View key={vehicle.id} style={styles.vehicleCard}>
-            <Image
-              source={vehicle.image}
-              style={styles.vehicleImage}
-            />
-            <View style={styles.vehicleInfo}>
-              <Text style={styles.vehicleName}>{vehicle.name}</Text>
-              <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => handleAddVehicle(vehicle.id)}
-              >
-                <Text style={styles.addButtonText}>Add</Text>
-              </TouchableOpacity>
+      {/* Odometer Section */}
+      <View style={styles.odometerSection}>
+        <Text style={styles.odometerLabel}>Current Odometer</Text>
+        <Text style={styles.odometerValue}>{vehicle.odometer.toLocaleString()} mi</Text>
+      </View>
+
+      {/* Log Service Button */}
+      <TouchableOpacity
+        style={styles.logServiceButton}
+        onPress={handleLogService}
+      >
+        <MaterialIcons name="add-circle" size={20} color="#3a3f47" />
+        <Text style={styles.logServiceButtonText}>Log a Service</Text>
+      </TouchableOpacity>
+
+      {/* Maintenance Log Header */}
+      <View style={styles.maintenanceHeader}>
+        <Text style={styles.maintenanceTitle}>Maintenance Log</Text>
+        <Text style={styles.maintenanceCount}>{maintenance.length} records</Text>
+      </View>
+
+      {/* Maintenance List */}
+      <View style={styles.maintenanceList}>
+        {maintenance.length > 0 ? (
+          maintenance.map((item) => (
+            <View key={item.id} style={styles.maintenanceItem}>
+              <View style={styles.serviceIcon}>
+                <MaterialIcons name="build" size={20} color="#e8e8e8" />
+              </View>
+              
+              <View style={styles.serviceDetails}>
+                <Text style={styles.serviceName}>{item.serviceType}</Text>
+                <View style={styles.serviceMetadata}>
+                  <Text style={styles.serviceMeta}>
+                    📍 {item.mileage.toLocaleString()} mi
+                  </Text>
+                  <Text style={styles.serviceMeta}>
+                    📅 {formatDate(item.date)}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.costContainer}>
+                <Text style={styles.cost}>${item.cost.toFixed(2)}</Text>
+              </View>
             </View>
-          </View>
-        ))}
+          ))
+        ) : (
+          <Text style={styles.noMaintenanceText}>
+            No maintenance records yet. Start logging!
+          </Text>
+        )}
       </View>
     </ScrollView>
   )
@@ -99,61 +140,137 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
   },
-  headerContainer: {
-    alignItems: "center",
-    marginBottom: 30,
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: "500",
-    color: "#e8e8e8",
-    letterSpacing: 0.5,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#b8b8b8",
-    marginTop: 8,
-  },
-  vehiclesContainer: {
-    gap: 16,
-    paddingBottom: 40,
-  },
-  vehicleCard: {
+  rideHeader: {
     backgroundColor: "#4a5057",
     borderRadius: 12,
-    overflow: "hidden",
+    padding: 20,
+    marginBottom: 20,
+    alignItems: "center",
+  },
+  vehicleImageContainer: {
+    width: 100,
+    height: 100,
+    backgroundColor: "#3a3f47",
+    borderRadius: 50,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  vehicleDetails: {
+    alignItems: "center",
+  },
+  year: {
+    fontSize: 14,
+    color: "#b8b8b8",
+    marginBottom: 4,
+  },
+  make: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#e8e8e8",
+  },
+  model: {
+    fontSize: 18,
+    fontWeight: "400",
+    color: "#b8b8b8",
+  },
+  odometerSection: {
+    backgroundColor: "#4a5057",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    alignItems: "center",
+  },
+  odometerLabel: {
+    fontSize: 14,
+    color: "#b8b8b8",
+    marginBottom: 8,
+  },
+  odometerValue: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#e8e8e8",
+  },
+  logServiceButton: {
+    backgroundColor: "#e8e8e8",
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 24,
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
+    justifyContent: "center",
+    gap: 8,
   },
-  vehicleImage: {
-    width: 100,
-    height: 80,
-    borderRadius: 8,
-    resizeMode: "cover",
-    marginRight: 12,
+  logServiceButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#3a3f47",
   },
-  vehicleInfo: {
-    flex: 1,
+  maintenanceHeader: {
+    flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
   },
-  vehicleName: {
+  maintenanceTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#e8e8e8",
+  },
+  maintenanceCount: {
+    fontSize: 14,
+    color: "#b8b8b8",
+  },
+  maintenanceList: {
+    gap: 12,
+    paddingBottom: 40,
+  },
+  maintenanceItem: {
+    backgroundColor: "#4a5057",
+    borderRadius: 10,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  serviceIcon: {
+    width: 40,
+    height: 40,
+    backgroundColor: "#3a3f47",
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  serviceDetails: {
+    flex: 1,
+  },
+  serviceName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#e8e8e8",
+    marginBottom: 6,
+  },
+  serviceMetadata: {
+    gap: 6,
+  },
+  serviceMeta: {
+    fontSize: 12,
+    color: "#b8b8b8",
+  },
+  costContainer: {
+    alignItems: "flex-end",
+  },
+  cost: {
     fontSize: 16,
     fontWeight: "600",
     color: "#e8e8e8",
-    marginBottom: 8,
   },
-  addButton: {
-    backgroundColor: "#6c7278",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    alignSelf: "flex-start",
-  },
-  addButtonText: {
+  noMaintenanceText: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#e8e8e8",
+    color: "#b8b8b8",
+    textAlign: "center",
+    marginVertical: 20,
   },
 })
 
