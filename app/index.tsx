@@ -1,6 +1,6 @@
 import { Text, View, StyleSheet, Image, TouchableOpacity, ScrollView } from "react-native"
-import evo5 from "../assets/images/evo5.png"
-import fireblade from "../assets/images/fireblade.png"
+const evo5 = require("../assets/images/evo5.png")
+const fireblade = require("../assets/images/fireblade.png")
 
 const app = () => {
   const handleCategoryPress = (category: string) => {
