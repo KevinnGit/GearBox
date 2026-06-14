@@ -1,4 +1,5 @@
 import { ScrollView, Text, TouchableOpacity, View, StyleSheet, Image } from "react-native"
+import { useRouter } from "expo-router"
 
 //images
 const evo5 = require("../assets/images/evo5.png")
@@ -6,8 +7,14 @@ const firebalde = require("../assets/images/fireblade.png")
 
 //function for select a category either car or motor
 const app = () => {
+  const router = useRouter()
+
   const handleCategoryPress = (category: string) => {
-    console.log('${category} selected');
+    console.log(`${category} selected`);
+    router.push({
+      pathname: "/details",
+      params: { category }
+    })
   };
 
   return(

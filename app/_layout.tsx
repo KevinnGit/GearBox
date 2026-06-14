@@ -14,8 +14,22 @@ export default function RootLayout() {
 
     </Stack.Screen>
 
-
-
+    <Stack.Screen
+      name = 'details'
+      options = {{
+        title: "Details",
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: '#3a3f47',
+        },
+        headerTintColor: '#e8e8e8',
+        headerTitleStyle: {
+          color: '#e8e8e8',
+          fontSize: 18,
+          fontWeight: '600',
+        },
+      }}
+    />
 
 
 
