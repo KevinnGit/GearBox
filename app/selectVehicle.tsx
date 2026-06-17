@@ -4,13 +4,23 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
 } from "react-native"
 import { useRoute, useNavigation } from "@react-navigation/native"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { MaterialIcons } from "@expo/vector-icons"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
-// Sample vehicles data
+// ---------------- TYPES ----------------
+type Vehicle = {
+  id: number
+  make: string
+  model: string
+  year: number
+  odometer: number
+  color: string
+}
+
+// ---------------- SAMPLE DATA ----------------
 const vehiclesData = {
   Car: [
     {
@@ -90,26 +100,83 @@ const vehiclesData = {
   ],
 }
 
+// ---------------- COMPONENT ----------------
 const SelectVehicleScreen = () => {
   const route = useRoute()
-  const navigation = useNavigation()
+  const navigation: any = useNavigation()
+
   const category = (route.params as any)?.category || "Car"
 
-  const vehicles = vehiclesData[category as keyof typeof vehiclesData] || []
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
 
+  const STORAGE_KEY = `vehicles_${category}`
+
+  // ---------------- LOAD ----------------
+  const loadVehicles = async () => {
+    try {
+      const savedVehicles = await AsyncStorage.getItem(STORAGE_KEY)
+
+      if (savedVehicles) {
+        setVehicles(JSON.parse(savedVehicles))
+      } else {
+        const defaultVehicles =
+          vehiclesData[category as keyof typeof vehiclesData] || []
+
+        setVehicles(defaultVehicles)
+
+        await AsyncStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify(defaultVehicles)
+        )
+      }
+    } catch (error) {
+      console.log("Load Error:", error)
+    }
+  }
+
+  // ---------------- ADD VEHICLE ----------------
+  const handleAddVehicle = async () => {
+    try {
+      const newVehicle: Vehicle = {
+        id: Date.now(),
+        make: "Toyota",
+        model: `Vehicle ${vehicles.length + 1}`,
+        year: 2025,
+        odometer: 0,
+        color: "#1abc9c",
+      }
+
+      const updatedVehicles = [...vehicles, newVehicle]
+
+      setVehicles(updatedVehicles)
+
+      await AsyncStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(updatedVehicles)
+      )
+    } catch (error) {
+      console.log("Save Error:", error)
+    }
+  }
+
+  // ---------------- EFFECT ----------------
   useEffect(() => {
     navigation.setOptions({
       title: `Select Your ${category}`,
     })
-  }, [category, navigation])
 
-  const handleSelectVehicle = (vehicle: any) => {
+    loadVehicles()
+  }, [category])
+
+  // ---------------- SELECT ----------------
+  const handleSelectVehicle = (vehicle: Vehicle) => {
     navigation.navigate("details", {
       vehicle,
       category,
     })
   }
 
+  // ---------------- UI ----------------
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -122,36 +189,37 @@ const SelectVehicleScreen = () => {
       <View style={styles.vehiclesList}>
         {vehicles.map((vehicle) => (
           <TouchableOpacity
-            key={vehicle.id}
+            key={vehicle.id.toString()}
             style={styles.vehicleCard}
             onPress={() => handleSelectVehicle(vehicle)}
             activeOpacity={0.7}
           >
-            {/* Vehicle Icon Circle */}
             <View
               style={[
                 styles.vehicleIconContainer,
-                { backgroundColor: vehicle.color },
+                { backgroundColor: vehicle.color || "#ccc" },
               ]}
             >
               <MaterialIcons
-                name={category === "Motorcycle" ? "two-wheeler" : "directions-car"}
+                name={
+                  category === "Motorcycle"
+                    ? "two-wheeler"
+                    : "directions-car"
+                }
                 size={40}
                 color="#fff"
               />
             </View>
 
-            {/* Vehicle Info */}
             <View style={styles.vehicleInfo}>
               <Text style={styles.vehicleYear}>{vehicle.year}</Text>
               <Text style={styles.vehicleMake}>{vehicle.make}</Text>
               <Text style={styles.vehicleModel}>{vehicle.model}</Text>
               <Text style={styles.vehicleOdometer}>
-                📍 {vehicle.odometer.toLocaleString()} mi
+                📍 {vehicle.odometer?.toLocaleString() || "0"} mi
               </Text>
             </View>
 
-            {/* Arrow Icon */}
             <MaterialIcons
               name="arrow-forward-ios"
               size={20}
@@ -161,15 +229,20 @@ const SelectVehicleScreen = () => {
         ))}
       </View>
 
-      {/* Add New Vehicle Button */}
-      <TouchableOpacity style={styles.addNewButton}>
+      <TouchableOpacity
+        style={styles.addNewButton}
+        onPress={handleAddVehicle}
+      >
         <MaterialIcons name="add-circle-outline" size={20} color="#3a3f47" />
-        <Text style={styles.addNewButtonText}>Add New {category}</Text>
+        <Text style={styles.addNewButtonText}>
+          Add New {category}
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   )
 }
 
+// ---------------- STYLES ----------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
