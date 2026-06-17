@@ -1,16 +1,19 @@
 import {
-  ScrollView,
   Text,
   View,
   StyleSheet,
   TouchableOpacity,
+  Alert,
+  TextInput,
+  Modal,
 } from "react-native"
 import { useRoute, useNavigation } from "@react-navigation/native"
 import { useEffect, useState } from "react"
 import { MaterialIcons } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { FlatList } from "react-native"
 
-// ---------------- TYPES ----------------
+// ---------------- TYPE ----------------
 type Vehicle = {
   id: number
   make: string
@@ -20,83 +23,15 @@ type Vehicle = {
   color: string
 }
 
-// ---------------- SAMPLE DATA ----------------
+// ---------------- DATA ----------------
 const vehiclesData = {
   Car: [
-    {
-      id: 1,
-      make: "Mitsubishi",
-      model: "Evo 5",
-      year: 2001,
-      odometer: 45200,
-      color: "#e74c3c",
-    },
-    {
-      id: 2,
-      make: "Toyota",
-      model: "Supra",
-      year: 1998,
-      odometer: 67500,
-      color: "#f39c12",
-    },
-    {
-      id: 3,
-      make: "Nissan",
-      model: "Skyline R34",
-      year: 1999,
-      odometer: 52300,
-      color: "#3498db",
-    },
-    {
-      id: 4,
-      make: "Honda",
-      model: "Civic Type R",
-      year: 2005,
-      odometer: 38900,
-      color: "#9b59b6",
-    },
-    {
-      id: 5,
-      make: "Subaru",
-      model: "Impreza WRX",
-      year: 2003,
-      odometer: 72400,
-      color: "#2ecc71",
-    },
+    { id: 1, make: "Mitsubishi", model: "Evo 5", year: 2001, odometer: 45200, color: "#e74c3c" },
+    { id: 2, make: "Toyota", model: "Supra", year: 1998, odometer: 67500, color: "#f39c12" },
   ],
   Motorcycle: [
-    {
-      id: 1,
-      make: "Honda",
-      model: "Fireblade",
-      year: 2008,
-      odometer: 24500,
-      color: "#e74c3c",
-    },
-    {
-      id: 2,
-      make: "Yamaha",
-      model: "YZF-R1",
-      year: 2015,
-      odometer: 12300,
-      color: "#f39c12",
-    },
-    {
-      id: 3,
-      make: "Kawasaki",
-      model: "Ninja H2",
-      year: 2020,
-      odometer: 8900,
-      color: "#2ecc71",
-    },
-    {
-      id: 4,
-      make: "Ducati",
-      model: "Panigale V4",
-      year: 2021,
-      odometer: 5600,
-      color: "#e91e63",
-    },
+    { id: 1, make: "Honda", model: "Fireblade", year: 2008, odometer: 24500, color: "#e74c3c" },
+    { id: 2, make: "Yamaha", model: "R1", year: 2015, odometer: 12300, color: "#f39c12" },
   ],
 }
 
@@ -104,59 +39,82 @@ const vehiclesData = {
 const SelectVehicleScreen = () => {
   const route = useRoute()
   const navigation: any = useNavigation()
-
   const category = (route.params as any)?.category || "Car"
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
+  const [modalVisible, setModalVisible] = useState(false)
 
   const STORAGE_KEY = `vehicles_${category}`
 
   // ---------------- LOAD ----------------
   const loadVehicles = async () => {
     try {
-      const savedVehicles = await AsyncStorage.getItem(STORAGE_KEY)
+      const saved = await AsyncStorage.getItem(STORAGE_KEY)
 
-      if (savedVehicles) {
-        setVehicles(JSON.parse(savedVehicles))
+      if (saved) {
+        setVehicles(JSON.parse(saved))
       } else {
-        const defaultVehicles =
-          vehiclesData[category as keyof typeof vehiclesData] || []
-
-        setVehicles(defaultVehicles)
-
-        await AsyncStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify(defaultVehicles)
-        )
+        const defaults = vehiclesData[category as keyof typeof vehiclesData] || []
+        setVehicles(defaults)
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(defaults))
       }
-    } catch (error) {
-      console.log("Load Error:", error)
+    } catch (err) {
+      console.log(err)
     }
   }
 
-  // ---------------- ADD VEHICLE ----------------
-  const handleAddVehicle = async () => {
-    try {
-      const newVehicle: Vehicle = {
-        id: Date.now(),
-        make: "Toyota",
-        model: `Vehicle ${vehicles.length + 1}`,
-        year: 2025,
-        odometer: 0,
-        color: "#1abc9c",
-      }
+  // ---------------- SAVE ----------------
+  const saveVehicles = async (data: Vehicle[]) => {
+    setVehicles(data)
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  }
 
-      const updatedVehicles = [...vehicles, newVehicle]
-
-      setVehicles(updatedVehicles)
-
-      await AsyncStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(updatedVehicles)
-      )
-    } catch (error) {
-      console.log("Save Error:", error)
+  // ---------------- ADD ----------------
+  const addVehicle = async () => {
+    const newVehicle: Vehicle = {
+      id: Date.now(),
+      make: "Toyota",
+      model: `New ${vehicles.length + 1}`,
+      year: 2025,
+      odometer: 0,
+      color: "#1abc9c",
     }
+
+    await saveVehicles([...vehicles, newVehicle])
+  }
+
+  // ---------------- DELETE ----------------
+  const deleteVehicle = (id: number) => {
+    Alert.alert("Delete Vehicle", "Are you sure?", [
+      { text: "Cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          const updated = vehicles.filter(v => v.id !== id)
+          await saveVehicles(updated)
+        },
+      },
+    ])
+  }
+
+  // ---------------- EDIT ----------------
+  const openEdit = (vehicle: Vehicle) => {
+    setEditingVehicle(vehicle)
+    setModalVisible(true)
+  }
+
+  const saveEdit = async () => {
+    if (!editingVehicle) return
+
+    const updated = vehicles.map(v =>
+      v.id === editingVehicle.id ? editingVehicle : v
+    )
+
+    await saveVehicles(updated)
+    setModalVisible(false)
+    setEditingVehicle(null)
   }
 
   // ---------------- EFFECT ----------------
@@ -168,77 +126,99 @@ const SelectVehicleScreen = () => {
     loadVehicles()
   }, [category])
 
-  // ---------------- SELECT ----------------
-  const handleSelectVehicle = (vehicle: Vehicle) => {
-    navigation.navigate("details", {
-      vehicle,
-      category,
-    })
-  }
+  // ---------------- ITEM ----------------
+  const renderItem = ({ item }: { item: Vehicle }) => (
+    <View style={styles.card}>
+      <View style={[styles.icon, { backgroundColor: item.color }]}>
+        <MaterialIcons
+          name={category === "Motorcycle" ? "two-wheeler" : "directions-car"}
+          size={30}
+          color="#fff"
+        />
+      </View>
+
+      <View style={styles.info}>
+        <Text style={styles.year}>{item.year}</Text>
+        <Text style={styles.make}>{item.make}</Text>
+        <Text style={styles.model}>{item.model}</Text>
+        <Text style={styles.odometer}>
+          📍 {item.odometer.toLocaleString()} mi
+        </Text>
+      </View>
+
+      {/* Actions */}
+      <TouchableOpacity onPress={() => openEdit(item)}>
+        <MaterialIcons name="edit" size={22} color="#f1c40f" />
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => deleteVehicle(item.id)}>
+        <MaterialIcons name="delete" size={22} color="#e74c3c" />
+      </TouchableOpacity>
+    </View>
+  )
 
   // ---------------- UI ----------------
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>My {category}s</Text>
-        <Text style={styles.subtitle}>
-          {vehicles.length} {category.toLowerCase()}(s) available
-        </Text>
-      </View>
+    <View style={styles.container}>
 
-      <View style={styles.vehiclesList}>
-        {vehicles.map((vehicle) => (
-          <TouchableOpacity
-            key={vehicle.id.toString()}
-            style={styles.vehicleCard}
-            onPress={() => handleSelectVehicle(vehicle)}
-            activeOpacity={0.7}
-          >
-            <View
-              style={[
-                styles.vehicleIconContainer,
-                { backgroundColor: vehicle.color || "#ccc" },
-              ]}
-            >
-              <MaterialIcons
-                name={
-                  category === "Motorcycle"
-                    ? "two-wheeler"
-                    : "directions-car"
-                }
-                size={40}
-                color="#fff"
-              />
-            </View>
+      {/* LIST */}
+      <FlatList
+        data={vehicles}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderItem}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      />
 
-            <View style={styles.vehicleInfo}>
-              <Text style={styles.vehicleYear}>{vehicle.year}</Text>
-              <Text style={styles.vehicleMake}>{vehicle.make}</Text>
-              <Text style={styles.vehicleModel}>{vehicle.model}</Text>
-              <Text style={styles.vehicleOdometer}>
-                📍 {vehicle.odometer?.toLocaleString() || "0"} mi
-              </Text>
-            </View>
-
-            <MaterialIcons
-              name="arrow-forward-ios"
-              size={20}
-              color="#b8b8b8"
-            />
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <TouchableOpacity
-        style={styles.addNewButton}
-        onPress={handleAddVehicle}
-      >
-        <MaterialIcons name="add-circle-outline" size={20} color="#3a3f47" />
-        <Text style={styles.addNewButtonText}>
-          Add New {category}
-        </Text>
+      {/* ADD BUTTON */}
+      <TouchableOpacity style={styles.addBtn} onPress={addVehicle}>
+        <MaterialIcons name="add" size={20} color="#fff" />
+        <Text style={{ color: "#fff", marginLeft: 6 }}>Add Vehicle</Text>
       </TouchableOpacity>
-    </ScrollView>
+
+      {/* EDIT MODAL */}
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={styles.modal}>
+          <View style={styles.modalBox}>
+
+            <Text style={{ fontSize: 18, fontWeight: "600" }}>
+              Edit Vehicle
+            </Text>
+
+            <TextInput
+              placeholder="Make"
+              value={editingVehicle?.make}
+              onChangeText={(text) =>
+                setEditingVehicle(prev =>
+                  prev ? { ...prev, make: text } : prev
+                )
+              }
+              style={styles.input}
+            />
+
+            <TextInput
+              placeholder="Model"
+              value={editingVehicle?.model}
+              onChangeText={(text) =>
+                setEditingVehicle(prev =>
+                  prev ? { ...prev, model: text } : prev
+                )
+              }
+              style={styles.input}
+            />
+
+            <TouchableOpacity style={styles.saveBtn} onPress={saveEdit}>
+              <Text style={{ color: "#fff" }}>Save</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Text style={{ marginTop: 10 }}>Cancel</Text>
+            </TouchableOpacity>
+
+          </View>
+        </View>
+      </Modal>
+
+    </View>
   )
 }
 
@@ -247,79 +227,74 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#3a3f47",
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    padding: 15,
   },
-  header: {
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "600",
-    color: "#e8e8e8",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#b8b8b8",
-  },
-  vehiclesList: {
-    gap: 12,
-    marginBottom: 24,
-  },
-  vehicleCard: {
+
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#4a5057",
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-  },
-  vehicleIconContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  vehicleInfo: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  vehicleYear: {
-    fontSize: 12,
-    color: "#b8b8b8",
-    marginBottom: 2,
-  },
-  vehicleMake: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#e8e8e8",
-  },
-  vehicleModel: {
-    fontSize: 14,
-    fontWeight: "400",
-    color: "#b8b8b8",
-    marginBottom: 6,
-  },
-  vehicleOdometer: {
-    fontSize: 12,
-    color: "#9b9b9b",
-  },
-  addNewButton: {
-    backgroundColor: "#e8e8e8",
+    padding: 12,
     borderRadius: 10,
-    paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginBottom: 40,
+    marginBottom: 10,
+    gap: 10,
   },
-  addNewButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#3a3f47",
+
+  icon: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  info: {
+    flex: 1,
+  },
+
+  year: { color: "#aaa", fontSize: 12 },
+  make: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  model: { color: "#bbb" },
+  odometer: { color: "#999", fontSize: 12 },
+
+  addBtn: {
+    flexDirection: "row",
+    backgroundColor: "#1abc9c",
+    padding: 14,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 10,
+  },
+
+  modal: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  modalBox: {
+    width: "85%",
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 10,
+  },
+
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 6,
+  },
+
+  saveBtn: {
+    backgroundColor: "#1abc9c",
+    padding: 12,
+    marginTop: 15,
+    alignItems: "center",
+    borderRadius: 8,
   },
 })
 
