@@ -36,6 +36,8 @@ const AddServiceScreen = () => {
   const [showServiceDropdown, setShowServiceDropdown] = useState(false)
 
   const handleSaveService = () => {
+    console.log("Service button pressed")
+    
     if (!mileage || !cost || !date) {
       Alert.alert("Error", "Please fill in all fields")
       return
