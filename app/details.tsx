@@ -1,8 +1,14 @@
-import { ScrollView, Text, View, StyleSheet, TouchableOpacity } from "react-native"
+import { ScrollView, Text, View, StyleSheet, TouchableOpacity, Image, Alert } from "react-native"
 import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native"
 import { useCallback, useState } from "react"
 import { MaterialIcons } from "@expo/vector-icons"
-import { getServicesByVehicleId, getVehiclesByCategory, type Service } from "../database/db"
+import {
+  getServicesByVehicleId,
+  getVehiclesByCategory,
+  updateVehiclePhoto,
+  type Service,
+} from "../database/db"
+import { pickVehiclePhoto, saveVehiclePhoto, deleteVehiclePhotoFile } from "../utils/vehiclePhoto"
 
 const DetailsScreen = () => {
   const route = useRoute()
@@ -41,6 +47,26 @@ const DetailsScreen = () => {
     })
   }
 
+  const handleUploadPhoto = async () => {
+    if (!vehicle?.id) return
+
+    const pickedUri = await pickVehiclePhoto()
+    if (!pickedUri) return
+
+    try {
+      if (vehicle.photoUri) {
+        deleteVehiclePhotoFile(vehicle.photoUri)
+      }
+
+      const savedUri = saveVehiclePhoto(vehicle.id, pickedUri)
+      updateVehiclePhoto(vehicle.id, savedUri)
+      setVehicle({ ...vehicle, photoUri: savedUri })
+    } catch (error) {
+      console.log(error)
+      Alert.alert("Error", "Could not save photo")
+    }
+  }
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString("en-US", {
@@ -63,11 +89,15 @@ const DetailsScreen = () => {
       {/* My Ride Header */}
       <View style={styles.rideHeader}>
         <View style={styles.vehicleImageContainer}>
-          <MaterialIcons
-            name={category === "Motorcycle" ? "two-wheeler" : "directions-car"}
-            size={80}
-            color="#e8e8e8"
-          />
+          {vehicle.photoUri ? (
+            <Image source={{ uri: vehicle.photoUri }} style={styles.vehiclePhoto} />
+          ) : (
+            <MaterialIcons
+              name={category === "Motorcycle" ? "two-wheeler" : "directions-car"}
+              size={80}
+              color="#e8e8e8"
+            />
+          )}
         </View>
         
         <View style={styles.vehicleDetails}>
@@ -84,6 +114,16 @@ const DetailsScreen = () => {
       </View>
 
       {/* Log Service Button */}
+      <TouchableOpacity
+        style={styles.uploadPhotoButton}
+        onPress={handleUploadPhoto}
+      >
+        <MaterialIcons name="add-a-photo" size={20} color="#e8e8e8" />
+        <Text style={styles.uploadPhotoButtonText}>
+          {vehicle.photoUri ? "Change Vehicle Photo" : "Upload Vehicle Photo"}
+        </Text>
+      </TouchableOpacity>
+
       <TouchableOpacity
         style={styles.logServiceButton}
         onPress={handleLogService}
@@ -149,13 +189,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   vehicleImageContainer: {
-    width: 100,
-    height: 100,
+    width: 140,
+    height: 140,
     backgroundColor: "#3a3f47",
-    borderRadius: 50,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 16,
+    overflow: "hidden",
+  },
+  vehiclePhoto: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
   vehicleDetails: {
     alignItems: "center",
@@ -202,6 +248,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+  },
+  uploadPhotoButton: {
+    backgroundColor: "#4a5057",
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#5a6168",
+  },
+  uploadPhotoButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#e8e8e8",
   },
   logServiceButtonText: {
     fontSize: 16,

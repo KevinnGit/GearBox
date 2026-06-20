@@ -10,6 +10,7 @@ export type Vehicle = {
   odometer: number;
   color: string | null;
   category: string;
+  photoUri: string | null;
 };
 
 export type Service = {
@@ -22,6 +23,15 @@ export type Service = {
   notes: string | null;
 };
 
+const migrateDatabase = () => {
+  const columns = db.getAllSync<{ name: string }>("PRAGMA table_info(vehicles)");
+  const hasPhotoUri = columns.some((column) => column.name === "photoUri");
+
+  if (!hasPhotoUri) {
+    db.execSync("ALTER TABLE vehicles ADD COLUMN photoUri TEXT;");
+  }
+};
+
 export const initDatabase = () => {
   try {
     db.execSync(`
@@ -32,7 +42,8 @@ export const initDatabase = () => {
         year INTEGER NOT NULL,
         odometer INTEGER NOT NULL,
         color TEXT,
-        category TEXT NOT NULL
+        category TEXT NOT NULL,
+        photoUri TEXT
       );
     `);
 
@@ -49,6 +60,7 @@ export const initDatabase = () => {
       );
     `);
 
+    migrateDatabase();
     console.log("Database initialized");
   } catch (error) {
     console.log("Database Error:", error);
@@ -71,30 +83,30 @@ export const seedVehiclesIfEmpty = (
 
   for (const vehicle of defaults) {
     db.runSync(
-      "INSERT INTO vehicles (make, model, year, odometer, color, category) VALUES (?, ?, ?, ?, ?, ?)",
+      "INSERT INTO vehicles (make, model, year, odometer, color, category, photoUri) VALUES (?, ?, ?, ?, ?, ?, ?)",
       vehicle.make,
       vehicle.model,
       vehicle.year,
       vehicle.odometer,
       vehicle.color,
-      category
+      category,
+      vehicle.photoUri ?? null
     );
   }
 
   return getVehiclesByCategory(category);
 };
 
-export const addVehicle = (
-  vehicle: Omit<Vehicle, "id">
-): Vehicle => {
+export const addVehicle = (vehicle: Omit<Vehicle, "id">): Vehicle => {
   const result = db.runSync(
-    "INSERT INTO vehicles (make, model, year, odometer, color, category) VALUES (?, ?, ?, ?, ?, ?)",
+    "INSERT INTO vehicles (make, model, year, odometer, color, category, photoUri) VALUES (?, ?, ?, ?, ?, ?, ?)",
     vehicle.make,
     vehicle.model,
     vehicle.year,
     vehicle.odometer,
     vehicle.color,
-    vehicle.category
+    vehicle.category,
+    vehicle.photoUri ?? null
   );
 
   return db.getFirstSync<Vehicle>(
@@ -105,14 +117,19 @@ export const addVehicle = (
 
 export const updateVehicle = (vehicle: Vehicle) => {
   db.runSync(
-    "UPDATE vehicles SET make = ?, model = ?, year = ?, odometer = ?, color = ? WHERE id = ?",
+    "UPDATE vehicles SET make = ?, model = ?, year = ?, odometer = ?, color = ?, photoUri = ? WHERE id = ?",
     vehicle.make,
     vehicle.model,
     vehicle.year,
     vehicle.odometer,
     vehicle.color,
+    vehicle.photoUri ?? null,
     vehicle.id
   );
+};
+
+export const updateVehiclePhoto = (id: number, photoUri: string | null) => {
+  db.runSync("UPDATE vehicles SET photoUri = ? WHERE id = ?", photoUri, id);
 };
 
 export const deleteVehicle = (id: number) => {
@@ -120,9 +137,7 @@ export const deleteVehicle = (id: number) => {
   db.runSync("DELETE FROM vehicles WHERE id = ?", id);
 };
 
-export const addService = (
-  service: Omit<Service, "id">
-): Service => {
+export const addService = (service: Omit<Service, "id">): Service => {
   const result = db.runSync(
     "INSERT INTO services (vehicleId, serviceType, mileage, cost, date, notes) VALUES (?, ?, ?, ?, ?, ?)",
     service.vehicleId,
