@@ -1,48 +1,41 @@
-import { ScrollView, Text, View, StyleSheet, Image, TouchableOpacity, FlatList } from "react-native"
-import { useRoute, useNavigation } from "@react-navigation/native"
-import { useEffect, useState } from "react"
+import { ScrollView, Text, View, StyleSheet, TouchableOpacity } from "react-native"
+import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native"
+import { useCallback, useState } from "react"
 import { MaterialIcons } from "@expo/vector-icons"
-
-// Sample maintenance data
-const maintenanceData = [
-  {
-    id: 1,
-    serviceType: "Oil Change",
-    mileage: 12500,
-    cost: 45.99,
-    date: "2024-06-10",
-  },
-  {
-    id: 2,
-    serviceType: "Tire Rotation",
-    mileage: 15200,
-    cost: 60.00,
-    date: "2024-05-15",
-  },
-  {
-    id: 3,
-    serviceType: "Brake Pads Replacement",
-    mileage: 18700,
-    cost: 150.50,
-    date: "2024-04-20",
-  },
-]
+import { getServicesByVehicleId, getVehiclesByCategory, type Service } from "../database/db"
 
 const DetailsScreen = () => {
   const route = useRoute()
-  const navigation = useNavigation()
-  const vehicle = (route.params as any)?.vehicle
+  const navigation: any = useNavigation()
+  const initialVehicle = (route.params as any)?.vehicle
   const category = (route.params as any)?.category || "Car"
-  const [maintenance, setMaintenance] = useState(maintenanceData)
+  const [vehicle, setVehicle] = useState(initialVehicle)
+  const [maintenance, setMaintenance] = useState<Service[]>([])
 
-  useEffect(() => {
-    navigation.setOptions({
-      title: "My Ride",
-    })
-  }, [navigation])
+  const loadData = useCallback(() => {
+    if (!initialVehicle?.id) return
+
+    const services = getServicesByVehicleId(initialVehicle.id)
+    setMaintenance(services)
+
+    const vehicles = getVehiclesByCategory(category)
+    const updatedVehicle = vehicles.find((v) => v.id === initialVehicle.id)
+    if (updatedVehicle) {
+      setVehicle(updatedVehicle)
+    }
+  }, [initialVehicle?.id, category])
+
+  useFocusEffect(
+    useCallback(() => {
+      navigation.setOptions({
+        title: "My Ride",
+      })
+      loadData()
+    }, [navigation, loadData])
+  )
 
   const handleLogService = () => {
- navigation.navigate("addService", { 
+    navigation.navigate("addService", {
       vehicle,
       category,
     })
@@ -55,6 +48,14 @@ const DetailsScreen = () => {
       month: "short",
       day: "numeric",
     })
+  }
+
+  if (!vehicle) {
+    return (
+      <View style={[styles.container, styles.emptyState]}>
+        <Text style={styles.noMaintenanceText}>Vehicle not found</Text>
+      </View>
+    )
   }
 
   return (
@@ -271,6 +272,10 @@ const styles = StyleSheet.create({
     color: "#b8b8b8",
     textAlign: "center",
     marginVertical: 20,
+  },
+  emptyState: {
+    justifyContent: "center",
+    alignItems: "center",
   },
 })
 

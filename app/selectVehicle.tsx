@@ -10,32 +10,27 @@ import {
 import { useRoute, useNavigation } from "@react-navigation/native"
 import { useEffect, useState } from "react"
 import { MaterialIcons } from "@expo/vector-icons"
-import AsyncStorage from "@react-native-async-storage/async-storage"
 import { FlatList } from "react-native"
+import {
+  addVehicle as addVehicleToDb,
+  deleteVehicle as deleteVehicleFromDb,
+  getVehiclesByCategory,
+  seedVehiclesIfEmpty,
+  updateVehicle,
+  type Vehicle,
+} from "../database/db"
 
-// ---------------- TYPE ----------------
-type Vehicle = {
-  id: number
-  make: string
-  model: string
-  year: number
-  odometer: number
-  color: string
-}
-
-// ---------------- DATA ----------------
 const vehiclesData = {
   Car: [
-    { id: 1, make: "Mitsubishi", model: "Evo 5", year: 2001, odometer: 45200, color: "#e74c3c" },
-    { id: 2, make: "Toyota", model: "Supra", year: 1998, odometer: 67500, color: "#f39c12" },
+    { make: "Mitsubishi", model: "Evo 5", year: 2001, odometer: 45200, color: "#e74c3c" },
+    { make: "Toyota", model: "Supra", year: 1998, odometer: 67500, color: "#f39c12" },
   ],
   Motorcycle: [
-    { id: 1, make: "Honda", model: "Fireblade", year: 2008, odometer: 24500, color: "#e74c3c" },
-    { id: 2, make: "Yamaha", model: "R1", year: 2015, odometer: 12300, color: "#f39c12" },
+    { make: "Honda", model: "Fireblade", year: 2008, odometer: 24500, color: "#e74c3c" },
+    { make: "Yamaha", model: "R1", year: 2015, odometer: 12300, color: "#f39c12" },
   ],
 }
 
-// ---------------- COMPONENT ----------------
 const SelectVehicleScreen = () => {
   const route = useRoute()
   const navigation: any = useNavigation()
@@ -45,79 +40,75 @@ const SelectVehicleScreen = () => {
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [modalVisible, setModalVisible] = useState(false)
 
-  const STORAGE_KEY = `vehicles_${category}`
-
-  // ---------------- LOAD ----------------
-  const loadVehicles = async () => {
+  const loadVehicles = () => {
     try {
-      const saved = await AsyncStorage.getItem(STORAGE_KEY)
-
-      if (saved) {
-        setVehicles(JSON.parse(saved))
-      } else {
-        const defaults = vehiclesData[category as keyof typeof vehiclesData] || []
-        setVehicles(defaults)
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(defaults))
-      }
+      const defaults = vehiclesData[category as keyof typeof vehiclesData] || []
+      const data = seedVehiclesIfEmpty(category, defaults)
+      setVehicles(data)
     } catch (err) {
       console.log(err)
     }
   }
 
-  // ---------------- SAVE ----------------
-  const saveVehicles = async (data: Vehicle[]) => {
-    setVehicles(data)
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-  }
-
-  // ---------------- ADD ----------------
-  const addVehicle = async () => {
-    const newVehicle: Vehicle = {
-      id: Date.now(),
-      make: "Toyota",
-      model: `New ${vehicles.length + 1}`,
-      year: 2025,
-      odometer: 0,
-      color: "#1abc9c",
+  const addVehicle = () => {
+    try {
+      addVehicleToDb({
+        make: "Toyota",
+        model: `New ${vehicles.length + 1}`,
+        year: 2025,
+        odometer: 0,
+        color: "#1abc9c",
+        category,
+      })
+      loadVehicles()
+    } catch (err) {
+      console.log(err)
+      Alert.alert("Error", "Could not add vehicle")
     }
-
-    await saveVehicles([...vehicles, newVehicle])
   }
 
-  // ---------------- DELETE ----------------
   const deleteVehicle = (id: number) => {
     Alert.alert("Delete Vehicle", "Are you sure?", [
       { text: "Cancel" },
       {
         text: "Delete",
         style: "destructive",
-        onPress: async () => {
-          const updated = vehicles.filter(v => v.id !== id)
-          await saveVehicles(updated)
+        onPress: () => {
+          try {
+            deleteVehicleFromDb(id)
+            loadVehicles()
+          } catch (err) {
+            console.log(err)
+            Alert.alert("Error", "Could not delete vehicle")
+          }
         },
       },
     ])
   }
 
-  // ---------------- EDIT ----------------
   const openEdit = (vehicle: Vehicle) => {
     setEditingVehicle(vehicle)
     setModalVisible(true)
   }
 
-  const saveEdit = async () => {
+  const saveEdit = () => {
     if (!editingVehicle) return
 
-    const updated = vehicles.map(v =>
-      v.id === editingVehicle.id ? editingVehicle : v
-    )
-
-    await saveVehicles(updated)
-    setModalVisible(false)
-    setEditingVehicle(null)
+    try {
+      updateVehicle(editingVehicle)
+      loadVehicles()
+      setModalVisible(false)
+      setEditingVehicle(null)
+    } catch (err) {
+      console.log(err)
+      Alert.alert("Error", "Could not save changes")
+    }
   }
 
-  // ---------------- EFFECT ----------------
+  const openDetails = (vehicle: Vehicle) => {
+    navigation.navigate("details", { vehicle, category })
+  }
+
   useEffect(() => {
     navigation.setOptions({
       title: `Select Your ${category}`,
@@ -126,10 +117,9 @@ const SelectVehicleScreen = () => {
     loadVehicles()
   }, [category])
 
-  // ---------------- ITEM ----------------
   const renderItem = ({ item }: { item: Vehicle }) => (
-    <View style={styles.card}>
-      <View style={[styles.icon, { backgroundColor: item.color }]}>
+    <TouchableOpacity style={styles.card} onPress={() => openDetails(item)}>
+      <View style={[styles.icon, { backgroundColor: item.color || "#1abc9c" }]}>
         <MaterialIcons
           name={category === "Motorcycle" ? "two-wheeler" : "directions-car"}
           size={30}
@@ -146,7 +136,6 @@ const SelectVehicleScreen = () => {
         </Text>
       </View>
 
-      {/* Actions */}
       <TouchableOpacity onPress={() => openEdit(item)}>
         <MaterialIcons name="edit" size={22} color="#f1c40f" />
       </TouchableOpacity>
@@ -154,14 +143,11 @@ const SelectVehicleScreen = () => {
       <TouchableOpacity onPress={() => deleteVehicle(item.id)}>
         <MaterialIcons name="delete" size={22} color="#e74c3c" />
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   )
 
-  // ---------------- UI ----------------
   return (
     <View style={styles.container}>
-
-      {/* LIST */}
       <FlatList
         data={vehicles}
         keyExtractor={(item) => item.id.toString()}
@@ -169,17 +155,14 @@ const SelectVehicleScreen = () => {
         contentContainerStyle={{ paddingBottom: 20 }}
       />
 
-      {/* ADD BUTTON */}
       <TouchableOpacity style={styles.addBtn} onPress={addVehicle}>
         <MaterialIcons name="add" size={20} color="#fff" />
         <Text style={{ color: "#fff", marginLeft: 6 }}>Add Vehicle</Text>
       </TouchableOpacity>
 
-      {/* EDIT MODAL */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modal}>
           <View style={styles.modalBox}>
-
             <Text style={{ fontSize: 18, fontWeight: "600" }}>
               Edit Vehicle
             </Text>
@@ -188,7 +171,7 @@ const SelectVehicleScreen = () => {
               placeholder="Make"
               value={editingVehicle?.make}
               onChangeText={(text) =>
-                setEditingVehicle(prev =>
+                setEditingVehicle((prev) =>
                   prev ? { ...prev, make: text } : prev
                 )
               }
@@ -199,7 +182,7 @@ const SelectVehicleScreen = () => {
               placeholder="Model"
               value={editingVehicle?.model}
               onChangeText={(text) =>
-                setEditingVehicle(prev =>
+                setEditingVehicle((prev) =>
                   prev ? { ...prev, model: text } : prev
                 )
               }
@@ -213,16 +196,13 @@ const SelectVehicleScreen = () => {
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={{ marginTop: 10 }}>Cancel</Text>
             </TouchableOpacity>
-
           </View>
         </View>
       </Modal>
-
     </View>
   )
 }
 
-// ---------------- STYLES ----------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,

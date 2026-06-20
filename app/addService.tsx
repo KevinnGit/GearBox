@@ -10,6 +10,7 @@ import {
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { useState } from "react"
 import { MaterialIcons } from "@expo/vector-icons"
+import { addService } from "../database/db"
 
 const serviceTypes = [
   "Oil Change",
@@ -36,28 +37,44 @@ const AddServiceScreen = () => {
   const [showServiceDropdown, setShowServiceDropdown] = useState(false)
 
   const handleSaveService = () => {
-    console.log("Service button pressed")
-    
+    if (!vehicle?.id) {
+      Alert.alert("Error", "No vehicle selected")
+      return
+    }
+
     if (!mileage || !cost || !date) {
       Alert.alert("Error", "Please fill in all fields")
       return
     }
 
-    console.log({
-      serviceType,
-      mileage: parseInt(mileage),
-      cost: parseFloat(cost),
-      date,
-      vehicle: `${vehicle.make} ${vehicle.model}`,
-      category,
-    })
+    const mileageValue = parseInt(mileage, 10)
+    const costValue = parseFloat(cost)
 
-    Alert.alert("Success", "Service logged successfully!", [
-      {
-        text: "OK",
-        onPress: () => navigation.goBack(),
-      },
-    ])
+    if (isNaN(mileageValue) || isNaN(costValue)) {
+      Alert.alert("Error", "Please enter valid mileage and cost values")
+      return
+    }
+
+    try {
+      addService({
+        vehicleId: vehicle.id,
+        serviceType,
+        mileage: mileageValue,
+        cost: costValue,
+        date,
+        notes: null,
+      })
+
+      Alert.alert("Success", "Service logged successfully!", [
+        {
+          text: "OK",
+          onPress: () => navigation.goBack(),
+        },
+      ])
+    } catch (error) {
+      console.log(error)
+      Alert.alert("Error", "Could not save service. Please try again.")
+    }
   }
 
   return (
