@@ -57,20 +57,8 @@ const SelectVehicleScreen = () => {
   }
 
   const addVehicle = () => {
-    try {
-      addVehicleToDb({
-        make: "Toyota",
-        model: `New ${vehicles.length + 1}`,
-        year: 2025,
-        odometer: 0,
-        color: "#1abc9c",
-        category,
-        photoUri: null,
-      })
-      loadVehicles()
-    } catch (err) {
-      console.log(err)
-      Alert.alert("Error", "Could not add vehicle")
+    const addVehicle = () => {
+      navigation.navigate("addVehicle", { category })
     }
   }
 

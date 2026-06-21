@@ -1,8 +1,14 @@
 import { Stack } from "expo-router";
 import { useEffect } from "react";
 import { initDatabase } from "../database/db"
+import { useDrizzleStudio } from "expo-drizzle-studio-plugin"
+import { getDb } from "../database/db"
 
 export default function RootLayout() {
+
+  const db = getDb()
+  useDrizzleStudio(db)
+
   useEffect(() => {
     initDatabase();
   }, []);
@@ -18,6 +24,21 @@ export default function RootLayout() {
 
 
     </Stack.Screen>
+
+    <Stack.Screen
+    name="addVehicle"
+    options={{
+    title: "Add Vehicle",
+    headerShown: true,
+    headerStyle: { backgroundColor: "#3a3f47" },
+    headerTintColor: "#e8e8e8",
+    headerTitleStyle: {
+      color: "#e8e8e8",
+      fontSize: 18,
+      fontWeight: "600",
+    },
+  }}
+/>
 
     <Stack.Screen
       name = 'selectVehicle'
