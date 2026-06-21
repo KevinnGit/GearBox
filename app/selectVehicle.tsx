@@ -6,9 +6,10 @@ import {
   Alert,
   TextInput,
   Modal,
+  Image,
 } from "react-native"
-import { useRoute, useNavigation } from "@react-navigation/native"
-import { useEffect, useState } from "react"
+import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native"
+import { useEffect, useState, useCallback } from "react"
 import { MaterialIcons } from "@expo/vector-icons"
 import { FlatList } from "react-native"
 import {
@@ -19,15 +20,20 @@ import {
   updateVehicle,
   type Vehicle,
 } from "../database/db"
+import {
+  deleteVehiclePhotoFile,
+  pickVehiclePhoto,
+  saveVehiclePhoto,
+} from "../utils/vehiclePhoto"
 
 const vehiclesData = {
   Car: [
-    { make: "Mitsubishi", model: "Evo 5", year: 2001, odometer: 45200, color: "#e74c3c" },
-    { make: "Toyota", model: "Supra", year: 1998, odometer: 67500, color: "#f39c12" },
+    { make: "Mitsubishi", model: "Evo 5", year: 2001, odometer: 45200, color: "#e74c3c", photoUri: null, category: "Car" },
+    { make: "Toyota", model: "Supra", year: 1998, odometer: 67500, color: "#f39c12", photoUri: null, category: "Car" },
   ],
   Motorcycle: [
-    { make: "Honda", model: "Fireblade", year: 2008, odometer: 24500, color: "#e74c3c" },
-    { make: "Yamaha", model: "R1", year: 2015, odometer: 12300, color: "#f39c12" },
+    { make: "Honda", model: "Fireblade", year: 2008, odometer: 24500, color: "#e74c3c", photoUri: null, category: "Motorcycle" },
+    { make: "Yamaha", model: "R1", year: 2015, odometer: 12300, color: "#f39c12", photoUri: null, category: "Motorcycle" },
   ],
 }
 
@@ -51,12 +57,12 @@ const SelectVehicleScreen = () => {
   }
 
   const addVehicle = () => {
-    const addVehicle = () => {
-      navigation.navigate("addVehicle", { category })
-    }
+    navigation.navigate("addVehicle", { category })
   }
 
   const deleteVehicle = (id: number) => {
+    const vehicleToDelete = vehicles.find((v) => v.id === id)
+    const photoUri = vehicleToDelete?.photoUri
     Alert.alert("Delete Vehicle", "Are you sure?", [
       { text: "Cancel" },
       {
@@ -64,6 +70,9 @@ const SelectVehicleScreen = () => {
         style: "destructive",
         onPress: () => {
           try {
+            if (photoUri) {
+              deleteVehiclePhotoFile(photoUri)
+            }
             deleteVehicleFromDb(id)
             loadVehicles()
           } catch (err) {
@@ -94,20 +103,44 @@ const SelectVehicleScreen = () => {
     }
   }
 
-  const openDetails = (vehicle: Vehicle) => {
-    navigation.navigate("details", { vehicle, category })
+  const handleUploadPhoto = async () => {
+    if (!editingVehicle) return
+
+    const pickedUri = await pickVehiclePhoto()
+    if (!pickedUri) return
+
+    try {
+      const savedUri = saveVehiclePhoto(editingVehicle.id, pickedUri)
+      setEditingVehicle({ ...editingVehicle, photoUri: savedUri })
+    } catch (err) {
+      console.log(err)
+      Alert.alert("Error", "Could not save photo")
+    }
   }
 
-  useEffect(() => {
-    navigation.setOptions({
-      title: `Select Your ${category}`,
-    })
+  const handleRemovePhoto = () => {
+    const photoUri = editingVehicle?.photoUri
+    if (!photoUri) return
 
-    loadVehicles()
-  }, [category])
+    Alert.alert("Remove Photo", "Remove this vehicle photo?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          deleteVehiclePhotoFile(photoUri)
+          setEditingVehicle({ ...editingVehicle, photoUri: null })
+        },
+      },
+    ])
+  }
 
-  const renderItem = ({ item }: { item: Vehicle }) => (
-    <TouchableOpacity style={styles.card} onPress={() => openDetails(item)}>
+  const renderVehicleThumbnail = (item: Vehicle) => {
+    if (item.photoUri) {
+      return <Image source={{ uri: item.photoUri }} style={styles.thumbnail} />
+    }
+
+    return (
       <View style={[styles.icon, { backgroundColor: item.color || "#1abc9c" }]}>
         <MaterialIcons
           name={category === "Motorcycle" ? "two-wheeler" : "directions-car"}
@@ -115,6 +148,25 @@ const SelectVehicleScreen = () => {
           color="#fff"
         />
       </View>
+    )
+  }
+
+  const openDetails = (vehicle: Vehicle) => {
+    navigation.navigate("details", { vehicle, category })
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      navigation.setOptions({
+        title: `Select Your ${category}`,
+      })
+      loadVehicles()
+    }, [category])
+  )
+
+  const renderItem = ({ item }: { item: Vehicle }) => (
+    <TouchableOpacity style={styles.card} onPress={() => openDetails(item)}>
+      {renderVehicleThumbnail(item)}
 
       <View style={styles.info}>
         <Text style={styles.year}>{item.year}</Text>
@@ -178,12 +230,42 @@ const SelectVehicleScreen = () => {
               style={styles.input}
             />
 
+            <View style={styles.photoSection}>
+              {editingVehicle?.photoUri ? (
+                <Image
+                  source={{ uri: editingVehicle.photoUri }}
+                  style={styles.photoPreview}
+                />
+              ) : (
+                <View style={styles.photoPlaceholder}>
+                  <MaterialIcons name="photo-camera" size={28} color="#999" />
+                  <Text style={styles.photoPlaceholderText}>
+                    No photo yet
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={styles.photoBtn}
+                onPress={handleUploadPhoto}
+              >
+                <MaterialIcons name="add-a-photo" size={18} color="#fff" />
+                <Text style={styles.photoBtnText}>Upload Photo</Text>
+              </TouchableOpacity>
+
+              {editingVehicle?.photoUri ? (
+                <TouchableOpacity onPress={handleRemovePhoto}>
+                  <Text style={styles.removePhotoText}>Remove Photo</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
             <TouchableOpacity style={styles.saveBtn} onPress={saveEdit}>
               <Text style={{ color: "#fff" }}>Save</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Text style={{ marginTop: 10 }}>Cancel</Text>
+              <Text style={{ marginTop: 10, textAlign: "center", color: "#666" }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -215,6 +297,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
+  },
+
+  thumbnail: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
   },
 
   info: {
@@ -256,6 +344,55 @@ const styles = StyleSheet.create({
     marginTop: 10,
     padding: 10,
     borderRadius: 6,
+  },
+
+  photoSection: {
+    marginTop: 14,
+    alignItems: "center",
+    gap: 10,
+  },
+
+  photoPreview: {
+    width: "100%",
+    height: 160,
+    borderRadius: 8,
+  },
+
+  photoPlaceholder: {
+    width: "100%",
+    height: 120,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderStyle: "dashed",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+  },
+
+  photoPlaceholderText: {
+    color: "#999",
+    fontSize: 13,
+  },
+
+  photoBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#3a3f47",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+
+  photoBtnText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+
+  removePhotoText: {
+    color: "#e74c3c",
+    fontSize: 13,
   },
 
   saveBtn: {

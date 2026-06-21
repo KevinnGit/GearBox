@@ -6,11 +6,13 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  Image,
 } from "react-native"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { useState } from "react"
 import { MaterialIcons } from "@expo/vector-icons"
-import { addVehicle } from "../database/db"
+import { addVehicle, updateVehiclePhoto } from "../database/db"
+import { pickVehiclePhoto, saveVehiclePhoto } from "../utils/vehiclePhoto"
 
 const COLORS = [
   { label: "Red",    value: "#e74c3c" },
@@ -33,6 +35,18 @@ const AddVehicleScreen = () => {
   const [year, setYear] = useState("")
   const [odometer, setOdometer] = useState("")
   const [selectedColor, setSelectedColor] = useState(COLORS[0].value)
+  const [photoUri, setPhotoUri] = useState<string | null>(null)
+
+  const handlePickPhoto = async () => {
+    const picked = await pickVehiclePhoto()
+    if (picked) {
+      setPhotoUri(picked)
+    }
+  }
+
+  const handleRemovePhoto = () => {
+    setPhotoUri(null)
+  }
 
   const handleSave = () => {
     if (!make || !model || !year || !odometer) {
@@ -49,7 +63,7 @@ const AddVehicleScreen = () => {
     }
 
     try {
-      addVehicle({
+      const insertedId = addVehicle({
         make,
         model,
         year: yearValue,
@@ -58,6 +72,11 @@ const AddVehicleScreen = () => {
         category,
         photoUri: null,
       })
+
+      if (photoUri) {
+        const savedUri = saveVehiclePhoto(insertedId, photoUri)
+        updateVehiclePhoto(insertedId, savedUri)
+      }
 
       Alert.alert("Success", "Vehicle added!", [
         { text: "OK", onPress: () => navigation.goBack() },
@@ -73,6 +92,23 @@ const AddVehicleScreen = () => {
       <View style={styles.header}>
         <Text style={styles.title}>Add {category}</Text>
         <Text style={styles.subtitle}>Enter your vehicle details</Text>
+      </View>
+
+      {/* Photo Picker */}
+      <View style={styles.photoContainer}>
+        {photoUri ? (
+          <View style={styles.photoPreviewWrapper}>
+            <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+            <TouchableOpacity style={styles.removePhotoBadge} onPress={handleRemovePhoto}>
+              <MaterialIcons name="close" size={16} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.photoPlaceholder} onPress={handlePickPhoto}>
+            <MaterialIcons name="add-a-photo" size={32} color="#b8b8b8" />
+            <Text style={styles.photoPlaceholderText}>Add Vehicle Photo</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Make */}
@@ -269,6 +305,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#e8e8e8",
+  },
+  photoContainer: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  photoPreviewWrapper: {
+    position: "relative",
+    width: "100%",
+    height: 180,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  photoPreview: {
+    width: "100%",
+    height: "100%",
+  },
+  removePhotoBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  photoPlaceholder: {
+    width: "100%",
+    height: 140,
+    backgroundColor: "#4a5057",
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#5a6168",
+    borderStyle: "dashed",
+    gap: 8,
+  },
+  photoPlaceholderText: {
+    color: "#b8b8b8",
+    fontSize: 14,
+    fontWeight: "500",
   },
   saveButton: {
     backgroundColor: "#e8e8e8",

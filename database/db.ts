@@ -76,9 +76,9 @@ export const getVehiclesByCategory = (category: string): Vehicle[] => {
 
 export const addVehicle = (
   vehicle: Omit<Vehicle, "id">
-): void => {
+): number => {
   const db = getDb()
-  db.runSync(
+  const result = db.runSync(
     `INSERT INTO vehicles (make, model, year, odometer, color, category, photoUri)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
@@ -91,6 +91,7 @@ export const addVehicle = (
       vehicle.photoUri ?? null,
     ]
   )
+  return result.lastInsertRowId
 }
 
 export const updateVehicle = (vehicle: Vehicle): void => {
@@ -108,6 +109,11 @@ export const updateVehicle = (vehicle: Vehicle): void => {
       vehicle.id,
     ]
   )
+}
+
+export const updateVehiclePhoto = (id: number, photoUri: string | null): void => {
+  const db = getDb()
+  db.runSync("UPDATE vehicles SET photoUri = ? WHERE id = ?", [photoUri, id])
 }
 
 export const deleteVehicle = (id: number): void => {
