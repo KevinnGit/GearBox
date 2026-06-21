@@ -51,24 +51,8 @@ const SelectVehicleScreen = () => {
   }
 
   const addVehicle = () => {
-<<<<<<< HEAD
     const addVehicle = () => {
       navigation.navigate("addVehicle", { category })
-=======
-    try {
-      addVehicleToDb({
-        make: "Toyota",
-        model: `New ${vehicles.length + 1}`,
-        year: 2025,
-        odometer: 0,
-        color: "#1abc9c",
-        category,
-      })
-      loadVehicles()
-    } catch (err) {
-      console.log(err)
-      Alert.alert("Error", "Could not add vehicle")
->>>>>>> parent of c9fe907 (add pic for unit is working)
     }
   }
 
