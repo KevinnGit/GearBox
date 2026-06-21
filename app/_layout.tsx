@@ -1,9 +1,14 @@
 import { Stack } from "expo-router";
 import { useEffect } from "react";
+<<<<<<< HEAD
 import { initDatabase } from "../database/db"
 import { useDrizzleStudio } from "expo-drizzle-studio-plugin"
 import { getDb } from "../database/db"
 
+=======
+import { initDatabase } from "../database/db";
+``
+>>>>>>> parent of c9fe907 (add pic for unit is working)
 export default function RootLayout() {
 
   const db = getDb()

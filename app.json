@@ -39,14 +39,7 @@
           }
         }
       ],
-      "expo-sqlite",
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Allow GearBox to access your photos so you can attach a picture of your vehicle.",
-          "cameraPermission": "Allow GearBox to use your camera to take a photo of your vehicle."
-        }
-      ]
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

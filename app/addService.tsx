@@ -128,7 +128,7 @@ const AddServiceScreen = () => {
       <View style={styles.section}>
         <Text style={styles.label}>Mileage (miles)</Text>
         <View style={styles.inputContainer}>
-          <MaterialIcons name="speed" size={20} color="#b8b8b8" />
+          <MaterialIcons name="speedometer" size={20} color="#b8b8b8" />
           <TextInput
             style={styles.input}
             placeholder="Enter current odometer reading"
