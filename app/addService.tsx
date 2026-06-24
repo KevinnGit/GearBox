@@ -6,11 +6,39 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  Platform,
 } from "react-native"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { useState } from "react"
 import { MaterialIcons } from "@expo/vector-icons"
-import { addService } from "../database/db"
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker"
+import { addService, updateVehicle } from "../database/db"
+
+const formatNumberWithCommas = (text: string) => {
+  const digits = text.replace(/\D/g, "")
+  if (!digits) return ""
+  return Number(digits).toLocaleString()
+}
+
+const formatCostWithCommas = (text: string) => {
+  const cleaned = text.replace(/[^0-9.]/g, "")
+  const dotCount = (cleaned.match(/\./g) || []).length
+  if (dotCount > 1) return text
+
+  const parts = cleaned.split(".")
+  const integerPart = parts[0].replace(/,/g, "")
+  const decimalPart = parts[1]
+
+  if (!integerPart) return cleaned
+
+  const formattedInteger = Number(integerPart).toLocaleString()
+
+  if (decimalPart !== undefined) {
+    return `${formattedInteger}.${decimalPart}`
+  }
+
+  return formattedInteger
+}
 
 const serviceTypes = [
   "Oil Change",
@@ -34,7 +62,17 @@ const AddServiceScreen = () => {
   const [mileage, setMileage] = useState("")
   const [cost, setCost] = useState("")
   const [date, setDate] = useState(new Date().toISOString().split("T")[0])
+  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [showDatePicker, setShowDatePicker] = useState(false)
   const [showServiceDropdown, setShowServiceDropdown] = useState(false)
+
+  const onDateChange = (_event: DateTimePickerEvent, pickedDate?: Date) => {
+    if (Platform.OS === "android") setShowDatePicker(false)
+    if (pickedDate) {
+      setSelectedDate(pickedDate)
+      setDate(pickedDate.toISOString().split("T")[0])
+    }
+  }
 
   const handleSaveService = () => {
     if (!vehicle?.id) {
@@ -47,11 +85,20 @@ const AddServiceScreen = () => {
       return
     }
 
-    const mileageValue = parseInt(mileage, 10)
-    const costValue = parseFloat(cost)
+    const rawMileage = mileage.replace(/,/g, "")
+    const mileageValue = parseInt(rawMileage, 10)
+    const costValue = parseFloat(cost.replace(/,/g, ""))
 
     if (isNaN(mileageValue) || isNaN(costValue)) {
       Alert.alert("Error", "Please enter valid mileage and cost values")
+      return
+    }
+
+    if (mileageValue < vehicle.odometer) {
+      Alert.alert(
+        "Invalid Odometer",
+        `Service mileage (${mileageValue.toLocaleString()} mi) cannot be less than the current odometer (${vehicle.odometer.toLocaleString()} mi).`
+      )
       return
     }
 
@@ -64,6 +111,8 @@ const AddServiceScreen = () => {
         date,
         notes: null,
       })
+
+      updateVehicle({ ...vehicle, odometer: mileageValue })
 
       Alert.alert("Success", "Service logged successfully!", [
         {
@@ -135,7 +184,7 @@ const AddServiceScreen = () => {
             placeholderTextColor="#6c7278"
             keyboardType="number-pad"
             value={mileage}
-            onChangeText={setMileage}
+            onChangeText={(text) => setMileage(formatNumberWithCommas(text))}
           />
         </View>
       </View>
@@ -151,7 +200,7 @@ const AddServiceScreen = () => {
             placeholderTextColor="#6c7278"
             keyboardType="decimal-pad"
             value={cost}
-            onChangeText={setCost}
+            onChangeText={(text) => setCost(formatCostWithCommas(text))}
           />
         </View>
       </View>
@@ -159,17 +208,34 @@ const AddServiceScreen = () => {
       {/* Date */}
       <View style={styles.section}>
         <Text style={styles.label}>Date</Text>
-        <View style={styles.inputContainer}>
+        <TouchableOpacity
+          style={styles.inputContainer}
+          onPress={() => setShowDatePicker(true)}
+        >
           <MaterialIcons name="calendar-today" size={20} color="#b8b8b8" />
-          <TextInput
-            style={styles.input}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#6c7278"
-            value={date}
-            onChangeText={setDate}
+          <Text style={[styles.input, !date && { color: "#6c7278" }]}>
+            {date ? new Date(date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "Select date"}
+          </Text>
+        </TouchableOpacity>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            maximumDate={new Date()}
+            onChange={onDateChange}
           />
-        </View>
-        <Text style={styles.hint}>Format: YYYY-MM-DD (e.g., 2024-06-14)</Text>
+        )}
+
+        {Platform.OS === "ios" && showDatePicker && (
+          <TouchableOpacity
+            style={styles.doneButton}
+            onPress={() => setShowDatePicker(false)}
+          >
+            <Text style={styles.doneButtonText}>Done</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Save Button */}
@@ -310,6 +376,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#b8b8b8",
     textAlign: "center",
+  },
+  doneButton: {
+    backgroundColor: "#e8e8e8",
+    borderRadius: 8,
+    paddingVertical: 10,
+    marginTop: 8,
+    alignItems: "center",
+  },
+  doneButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#3a3f47",
   },
 })
 
