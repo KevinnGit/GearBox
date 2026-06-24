@@ -193,7 +193,7 @@ const AddServiceScreen = () => {
       <View style={styles.section}>
         <Text style={styles.label}>Cost</Text>
         <View style={styles.inputContainer}>
-          <Text style={styles.currencySymbol}>$</Text>
+          <Text style={styles.currencySymbol}>₱</Text>
           <TextInput
             style={styles.input}
             placeholder="Enter service cost"

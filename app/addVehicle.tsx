@@ -84,7 +84,7 @@ const VEHICLE_MODELS: Record<string, string[]> = {
   "Royal Enfield": ["Bullet", "Classic", "Continental GT", "Himalayan", "Interceptor", "Meteor", "Shotgun", "Super Meteor"],
   "Triumph": ["Bonneville", "Daytona", "Rocket 3", "Scrambler", "Speed Triple", "Speed Twin", "Street Triple", "Street Twin", "Tiger", "Thruxton", "Trident"],
   "Victory": ["Cross Country", "Cross Roads", "Gunner", "High-Ball", "Judge", "Kingpin", "Magnum", "Octane", "Vegas", "Vision"],
-  "Yamaha": ["MT-07", "MT-09", "MT-10", "MT-125", "R1", "R125", "R15", "R3", "R6", "R7", "Super Tenere", "Ténéré 700", "Tracer 9", "VMAX", "WR450F", "XSR700", "XSR900", "YZF"],
+  "Yamaha": ["MT-07", "MT-09", "MT-10", "MT-125", "R1", "R125", "R15", "R3", "R6", "R7", "Super Tenere", "Ténéré 700", "Tracer 9", "VMAX", "WR450F", "XSR700", "XSR900", "YZF", "Stx125"],
   "Zero": ["DSR", "FX", "FXE", "SR", "SR/F", "SR/S", "SRS"],
 }
 

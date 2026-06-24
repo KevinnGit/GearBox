@@ -161,7 +161,7 @@ const DetailsScreen = () => {
               </View>
 
               <View style={styles.costContainer}>
-                <Text style={styles.cost}>${item.cost.toFixed(2)}</Text>
+                <Text style={styles.cost}>₱{item.cost.toFixed(2)}</Text>
               </View>
             </View>
           ))
