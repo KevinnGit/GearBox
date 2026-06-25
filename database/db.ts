@@ -39,6 +39,23 @@ export const initDatabase = () => {
       FOREIGN KEY (vehicleId) REFERENCES vehicles(id) ON DELETE CASCADE
     );
   `)
+
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS makes_cache (
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      PRIMARY KEY (name, category)
+    );
+  `)
+
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS models_cache (
+      make TEXT NOT NULL,
+      name TEXT NOT NULL,
+      PRIMARY KEY (make, name)
+    );
+  `)
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -166,4 +183,47 @@ export const addService = (
 export const deleteService = (id: number): void => {
   const db = getDb()
   db.runSync("DELETE FROM services WHERE id = ?", [id])
+}
+
+// ─── Makes/Models Cache ────────────────────────────────────────────────────
+
+export const getCachedMakes = (category: string): string[] => {
+  const db = getDb()
+  const rows = db.getAllSync<{ name: string }>(
+    "SELECT name FROM makes_cache WHERE category = ? ORDER BY name",
+    [category]
+  )
+  return rows.map((r) => r.name)
+}
+
+export const setCachedMakes = (category: string, makes: string[]): void => {
+  const db = getDb()
+  const now = new Date().toISOString()
+  db.runSync("DELETE FROM makes_cache WHERE category = ?", [category])
+  for (const name of makes) {
+    db.runSync(
+      "INSERT INTO makes_cache (name, category, updatedAt) VALUES (?, ?, ?)",
+      [name, category, now]
+    )
+  }
+}
+
+export const getCachedModels = (make: string): string[] => {
+  const db = getDb()
+  const rows = db.getAllSync<{ name: string }>(
+    "SELECT name FROM models_cache WHERE make = ? ORDER BY name",
+    [make]
+  )
+  return rows.map((r) => r.name)
+}
+
+export const setCachedModels = (make: string, models: string[]): void => {
+  const db = getDb()
+  db.runSync("DELETE FROM models_cache WHERE make = ?", [make])
+  for (const name of models) {
+    db.runSync(
+      "INSERT INTO models_cache (make, name) VALUES (?, ?)",
+      [make, name]
+    )
+  }
 }
